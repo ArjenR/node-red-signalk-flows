@@ -1,0 +1,1 @@
+[{"id":"6f701838dbefd088","type":"signalk-subscribe","z":"0e2e1c031e015802","name":"get environment.sun","mode":"sendChanges","flatten":true,"context":"vessels.self","path":"environment.sun","source":"","period":"30000","x":130,"y":180,"wires":[["097476dc2658ec7f","51a392e418113c01"]]}]
