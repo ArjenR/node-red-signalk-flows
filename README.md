@@ -10,3 +10,12 @@ Flow to read the json report created by the x120x_upsd service and send the info
 ## playback_nmea_0183.json
 Flow to prune and replay messy nmea sentence logs. It dedupes in batches of one secodn. Can speedup the replay by setting the messages per second.
 Uses node-red-contrib-merge-topic
+
+## MOB-tag-processor.json
+Work in progress. DO NOT USE YET. (Node-red export of flow fooled me and only gave me one node)
+
+Works together with bt-sensors-plugin-sk plugin. Will monitor ble-tags or other bluetooth devices where the signal strenght and battery state is set to the sensors.tag.<your_tag_name>.signal and sensors.tag.<your_tag_name>.battery path. Checks every 10 seconds for a lost signal. If this is for 30 seconds it will set the MOB alarm and next waypoint.
+
+TODO: 
+- expose signals so parts of the flow can be managed from KIP.
+- manage autopilot via api?
