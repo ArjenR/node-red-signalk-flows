@@ -15,5 +15,6 @@ Uses node-red-contrib-merge-topic
 Works together with bt-sensors-plugin-sk plugin. Will monitor ble-tags or other bluetooth devices where the signal strenght and battery state is set to the sensors.tags.<your_tag_name>.signal and sensors.tags.<your_tag_name>.battery path. Checks every second for a lost signal. If this is for 10 seconds it will set the MOB alarm and next waypoint.
 
 TODO: 
-- expose signals so parts of the flow can be managed from KIP.
-- manage autopilot via api?
+- Adapt to to be released new format for (mob) alerts.
+- Expose signals so parts of the flow can be managed from KIP?
+- Manage autopilot via api?
