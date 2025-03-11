@@ -12,7 +12,7 @@ Flow to prune and replay messy nmea sentence logs. It dedupes in batches of one 
 Uses node-red-contrib-merge-topic
 
 ## MOB-tag-processor.json
-Works together with bt-sensors-plugin-sk plugin. Will monitor ble-tags or other bluetooth devices where the signal strenght and battery state is set to the sensors.tag.<your_tag_name>.signal and sensors.tag.<your_tag_name>.battery path. Checks every 10 seconds for a lost signal. If this is for 30 seconds it will set the MOB alarm and next waypoint.
+Works together with bt-sensors-plugin-sk plugin. Will monitor ble-tags or other bluetooth devices where the signal strenght and battery state is set to the sensors.tags.<your_tag_name>.signal and sensors.tags.<your_tag_name>.battery path. Checks every 10 seconds for a lost signal. If this is for 30 seconds it will set the MOB alarm and next waypoint.
 
 TODO: 
 - expose signals so parts of the flow can be managed from KIP.
