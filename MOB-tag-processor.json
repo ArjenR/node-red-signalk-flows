@@ -2,7 +2,7 @@
     {
         "id": "6996a1850e9640cf",
         "type": "tab",
-        "label": "MOB Tag processor",
+        "label": "MOB BLE Beacon processor",
         "disabled": false,
         "info": "",
         "env": []
@@ -15,11 +15,11 @@
         "mode": "sendAll",
         "flatten": true,
         "context": "vessels.self",
-        "path": "sensors.tag.*",
+        "path": "sensors.tags.*",
         "source": "",
         "period": 1000,
-        "x": 120,
-        "y": 100,
+        "x": 100,
+        "y": 120,
         "wires": [
             [
                 "db6e93b3cf41256a",
@@ -38,8 +38,8 @@
         "path": "navigation.position",
         "source": "",
         "period": 1000,
-        "x": 130,
-        "y": 160,
+        "x": 110,
+        "y": 180,
         "wires": [
             [
                 "db6e93b3cf41256a"
@@ -51,15 +51,15 @@
         "type": "function",
         "z": "6996a1850e9640cf",
         "name": "Store tags, time, position",
-        "func": "const tag_path = 'sensors.tag'\nif (msg.topic == 'navigation.position'){\n    flow.set('position', msg.payload);\n    // console.log(flow.get('position'))\n}\nelse if (msg.topic.slice(0,11) == tag_path){\n    var tracked_tags = flow.get(\"tracked_tags\");\n    const path = msg.topic.split('.');\n    const tag_name = path[2];\n    switch (path[3]){\n        case 'signal':\n            const position = flow.get('position');\n            const datetime = new Date();\n            const state = 'seen';\n\n            tracked_tags[tag_name] = {\n                'tag_name': tag_name,\n                'position': position,\n                'datetime': datetime,\n                'signal': msg.payload,\n                'state': state\n            };\n            var msg1 = {}\n            msg1.topic = `${tag_path}.${tag_name}.position_seen`;\n            msg1.payload = position;\n            msg1.$source = 'tag-processor';\n            node.send(msg1);\n\n            var msg2 = {}\n            msg2.topic = `${tag_path}.${tag_name}.last_seen`;\n            msg2.payload = datetime;\n            msg2.$source = 'tag-processor';\n            node.send(msg2);\n\n            var msg3 = {}\n            msg3.topic = `${tag_path}.${tag_name}.state`;\n            msg3.payload = state;\n            msg3.$source = 'tag-processor';\n            node.send(msg3);\n        case 'battery':\n            tracked_tags[tag_name].battery = msg.payload;\n    }\n    \n    flow.set(\"tracked_tags\", tracked_tags);\n  \n}\nreturn;\n",
+        "func": "const tag_path = 'sensors.tags'\nif (msg.topic == 'navigation.position'){\n    flow.set('position', msg.payload);\n    // console.log(flow.get('position'))\n}\nelse if (msg.topic.slice(0,tag_path.length) == tag_path){\n    var tracked_tags = flow.get(\"tracked_tags\");\n    const path = msg.topic.split('.');\n    const tag_name = path[2];\n    switch (path[3]){\n        case 'signal':\n            const position = flow.get('position');\n            const datetime = new Date();\n            const state = 'seen';\n\n            tracked_tags[tag_name] = {\n                'tag_name': tag_name,\n                'position': position,\n                'datetime': datetime,\n                'signal': msg.payload,\n                'state': state\n            };\n            var msg1 = {}\n            msg1.topic = `${tag_path}.${tag_name}.position_seen`;\n            msg1.payload = position;\n            msg1.$source = 'tag-processor';\n            node.send(msg1);\n\n            var msg2 = {}\n            msg2.topic = `${tag_path}.${tag_name}.last_seen`;\n            msg2.payload = datetime;\n            msg2.$source = 'tag-processor';\n            node.send(msg2);\n\n            var msg3 = {}\n            msg3.topic = `${tag_path}.${tag_name}.state`;\n            msg3.payload = state;\n            msg3.$source = 'tag-processor';\n            node.send(msg3);\n        case 'battery':\n            tracked_tags[tag_name].battery = msg.payload;\n    }\n    \n    flow.set(\"tracked_tags\", tracked_tags);\n  \n}\nreturn;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "// Code added here will be run once\n// whenever the node is started.\nvar tracked_tags = {};\nflow.set(\"tracked_tags\", tracked_tags);",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 160,
+        "x": 550,
+        "y": 180,
         "wires": [
             [
                 "2923a0a5b4e7f232"
@@ -71,25 +71,26 @@
         "type": "function",
         "z": "6996a1850e9640cf",
         "name": "Scan for missing tags",
-        "func": "const tag_path = 'sensors.tag'\n\nvar tag_messages = [];\nvar state_messages = [];\nvar table_overview = [];\nvar tbmsg = {};\nvar tracked_tags = flow.get(\"tracked_tags\");\n\nconst dtnow = new Date()\nvar setflow = false\nfor (const key of Object.keys(tracked_tags)){\n   // @ts-ignore\n   if (((dtnow - tracked_tags[key]['datetime']) >= 30000 && tracked_tags[key]['state'] == 'seen')) {\n      tracked_tags[key]['state'] = 'missing';\n      setflow = true;\n      // Only when we are travelling over 0.2 knots. Not with a bad fix and tied to shore.\n      if (msg.payload >= 0.2) {\n         var newmessage = {};\n         newmessage.topic = `mob.${tracked_tags[key]['tag_name']}`\n         newmessage.$source = 'tag-processor'\n         var alert_message = `Person Overboard! Tag name: ${tracked_tags[key]['tag_name']}. Last known position: ` +\n                              `Lat: ${tracked_tags[key]['position']['latitude']}, ` +\n                              `Lon: ${tracked_tags[key]['position']['longitude']}`;\n         newmessage.payload = {\n            \"path\": newmessage.topic,\n            \"method\": [\"visual\", \"sound\"],\n            \"state\": \"emergency\",\n            \"message\": alert_message,\n            \"position\": tracked_tags[key]['position'] };\n         newmessage.$source = 'tag-processor';\n         tag_messages.push(newmessage);\n      }\n      var state_message = {};\n      state_message.topic = `${tag_path}.${tracked_tags[key]['tag_name'].state}`;\n      state_message.payload = 'missing';\n      state_message.$source = 'tag-processor';\n      state_messages.push(state_message)\n\n      var next_point_message = {}\n      next_point_message.$source = 'tag-processor'\n      next_point_message.topic = 'navigation.course.nextPoint'\n      next_point_message.payload = {\n         'position': tracked_tags[key]['position'],\n         'type': 'MOB'\n      }\n      next_point_message.$source = 'tag-processor';\n      state_messages.push(next_point_message)\n   }\n   // @ts-ignore\n   else if ((tracked_tags[key]['state'] == 'missing') && ((dtnow - tracked_tags[key]['datetime']) <= 10)) {\n      // @ts-ignore\n      var state_message = {};\n      state_message.topic = `${tag_path}.${tracked_tags[key]['tag_name']}.state`;\n      state_message.payload = 'seen';\n      state_message.$source = 'tag-processor'\n      state_messages.push(state_message);\n      }\n   \n   table_overview.push({\n      'name': tracked_tags[key]['tag_name'],\n      'state': tracked_tags[key]['state'],\n      'signal': tracked_tags[key]['signal'],\n      'battery': tracked_tags[key]['battery'],\n      'last_seen': tracked_tags[key]['datetime'],\n      'position_latitude': tracked_tags[key]['position'].latitude,\n      'position_longitude': tracked_tags[key]['position'].longitude,\n      });\n\n   }\n\nif (setflow){\n   flow.set('tracked_tags', tracked_tags);\n   }\ntbmsg.topic = 'tag state table'\ntbmsg.payload = table_overview;\n\nreturn [state_messages, tag_messages, tbmsg]",
+        "func": "const tag_path = 'sensors.tags'\n\nvar tag_messages = [];\nvar state_messages = [];\nvar table_overview = [];\nvar tbmsg = {};\nvar tracked_tags = flow.get(\"tracked_tags\");\n\nconst dtnow = new Date()\nvar setflow = false\nfor (const key of Object.keys(tracked_tags)){\n   // @ts-ignore\n   if (((dtnow - tracked_tags[key]['datetime']) >= 30000 && tracked_tags[key]['state'] == 'seen')) {\n      tracked_tags[key]['state'] = 'missing';\n      setflow = true;\n      // Only when we are travelling over 0.2 knots. Not with a bad fix and tied to shore.\n      if (msg.payload >= 0.0) {\n         // construct mob alert message\n         var newmessage = {};\n         newmessage.topic = `mob.${tracked_tags[key]['tag_name']}`\n         newmessage.$source = 'tag-processor'\n         var alert_message = `Person Overboard! Tag name: ${tracked_tags[key]['tag_name']}. Last known position: ` +\n                              `Lat: ${tracked_tags[key]['position']['latitude']}, ` +\n                              `Lon: ${tracked_tags[key]['position']['longitude']}`;\n         newmessage.payload = {\n            \"path\": newmessage.topic,\n            \"method\": [\"visual\", \"sound\"],\n            \"state\": \"emergency\",\n            \"message\": alert_message,\n            \"position\": tracked_tags[key]['position'] };\n         newmessage.$source = 'tag-processor';\n         tag_messages.push(newmessage);\n      }\n      var state_message = {};\n      state_message.topic = `${tag_path}.${tracked_tags[key]['tag_name']}.state`;\n      state_message.payload = 'missing';\n      state_message.$source = 'tag-processor';\n      state_messages.push(state_message)\n\n      var next_point_message = {}\n      next_point_message.$source = 'tag-processor'\n      next_point_message.topic = 'navigation.course.nextPoint'\n      next_point_message.payload = {\n         'position': tracked_tags[key]['position'],\n         'type': 'MOB'\n      }\n      next_point_message.$source = 'tag-processor';\n      state_messages.push(next_point_message)\n      \n   }\n   // @ts-ignore\n   else if ((tracked_tags[key]['state'] == 'missing') && ((dtnow - tracked_tags[key]['datetime']) <= 10)) {\n      // @ts-ignore\n      var state_message = {};\n      state_message.topic = `${tag_path}.${tracked_tags[key]['tag_name']}.state`;\n      state_message.payload = 'seen';\n      state_message.$source = 'tag-processor'\n      state_messages.push(state_message);\n      }\n   \n   table_overview.push({\n      'name': tracked_tags[key]['tag_name'],\n      'state': tracked_tags[key]['state'],\n      'signal': tracked_tags[key]['signal'],\n      'battery': tracked_tags[key]['battery'],\n      'last_seen': tracked_tags[key]['datetime'],\n      'position_latitude': tracked_tags[key]['position'].latitude,\n      'position_longitude': tracked_tags[key]['position'].longitude,\n      });\n\n   }\n\nif (setflow){\n   flow.set('tracked_tags', tracked_tags);\n   }\ntbmsg.topic = 'tag state table'\ntbmsg.payload = table_overview;\n\nreturn [state_messages, tag_messages, tbmsg]",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
-        "y": 280,
+        "x": 540,
+        "y": 300,
         "wires": [
             [
-                "2923a0a5b4e7f232"
-            ],
-            [
-                "17372134f139ab16"
-            ],
-            [
-                "4631fe779233e254",
+                "2923a0a5b4e7f232",
                 "5531b6cbb222c698"
+            ],
+            [
+                "17372134f139ab16",
+                "5531b6cbb222c698"
+            ],
+            [
+                "4631fe779233e254"
             ]
         ]
     },
@@ -104,8 +105,8 @@
         "visual": true,
         "sound": true,
         "source": "",
-        "x": 850,
-        "y": 280,
+        "x": 830,
+        "y": 300,
         "wires": []
     },
     {
@@ -116,8 +117,8 @@
         "path": "",
         "source": "",
         "meta": "",
-        "x": 850,
-        "y": 200,
+        "x": 830,
+        "y": 220,
         "wires": []
     },
     {
@@ -131,8 +132,8 @@
         "path": "navigation.speedOverGround",
         "source": "",
         "period": 1000,
-        "x": 160,
-        "y": 280,
+        "x": 140,
+        "y": 300,
         "wires": [
             [
                 "b9a39fc9e463e277"
@@ -156,8 +157,8 @@
         "bytopic": "all",
         "topic": "topic",
         "outputs": 1,
-        "x": 370,
-        "y": 280,
+        "x": 350,
+        "y": 300,
         "wires": [
             [
                 "ad50bdb522f4a3ea"
@@ -237,8 +238,8 @@
         ],
         "outputs": 0,
         "cts": false,
-        "x": 800,
-        "y": 400,
+        "x": 780,
+        "y": 420,
         "wires": []
     },
     {
@@ -254,8 +255,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 800,
-        "y": 340,
+        "x": 780,
+        "y": 360,
         "wires": []
     },
     {
@@ -270,14 +271,14 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 820,
-        "y": 100,
+        "x": 800,
+        "y": 120,
         "wires": []
     },
     {
         "id": "7a3a58360f9b9bf3",
         "type": "ui_group",
-        "name": "Tag dashboard",
+        "name": "MOB Trackers",
         "tab": "df5d49ffa7082aaa",
         "order": 1,
         "disp": true,
